@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'radio_station_url' => env('RADIO_CHANNELS_URL'),
+
 ];
