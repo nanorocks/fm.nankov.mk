@@ -18,6 +18,14 @@ class RadioChannel extends Model
     public const AUDIO_URL = 'audio_url';
     public const SUBTITLE = 'subtitle';
 
+    protected $hidden = [
+        self::LINK,
+        self::SRC,
+        self::ALT,
+        // 'created_at',
+        // 'updated_at',
+    ];
+
     protected $fillable = [
         self::LINK,
         self::SRC,
