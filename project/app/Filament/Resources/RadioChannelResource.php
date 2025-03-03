@@ -10,6 +10,7 @@ use App\Models\RadioChannel;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
+use App\Tables\Columns\CustomImageColumn;
 use App\Filament\Resources\RadioChannelResource\Pages;
 
 class RadioChannelResource extends Resource
@@ -41,17 +42,8 @@ class RadioChannelResource extends Resource
                     ->label('Title')
                     ->sortable()
                     ->searchable(),
-                TextColumn::make(RadioChannel::BASE_URL)
-                    ->label('Base URL')
-                    ->sortable()
-                    ->searchable(),
-                ImageColumn::make(RadioChannel::PHOTO)
-                    ->label('Photo')
-                    ->disk('public')
-                    ->url(fn($record) => asset($record->photo))
-                    ->height('40')
-                    ->width('40')
-                    ->circular(),
+                CustomImageColumn::make(RadioChannel::PHOTO)
+                    ->label('Photo'),
                 TextColumn::make(RadioChannel::AUDIO_URL)
                     ->label('Audio URL')
                     ->sortable()
