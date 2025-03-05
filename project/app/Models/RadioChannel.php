@@ -22,6 +22,7 @@ class RadioChannel extends Model
         self::LINK,
         self::SRC,
         self::ALT,
+        self::BASE_URL,
         // 'created_at',
         // 'updated_at',
     ];
