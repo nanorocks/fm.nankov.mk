@@ -23,7 +23,9 @@ class RadioChannelResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make(RadioChannel::PHOTO)
+                Forms\Components\FileUpload::make(RadioChannel::PHOTO)
+                    ->image()
+                    ->imageEditor()
                     ->label('Photo URL'),
                 Forms\Components\TextInput::make(RadioChannel::TITLE)
                     ->label('Title'),
