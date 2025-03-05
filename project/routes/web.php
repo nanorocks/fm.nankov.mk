@@ -8,10 +8,10 @@ Route::get('/', function () {
 });
 
 
-Route::get('/radio-channels', function () {
+Route::get('/channels', function () {
     return RadioChannel::all();
 });
 
-Route::get('/radio-channels/null', function () {
+Route::get('/channels/null', function () {
     return RadioChannel::where('audio_url', null)->get();
 });

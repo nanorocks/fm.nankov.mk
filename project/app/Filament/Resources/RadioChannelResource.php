@@ -9,9 +9,9 @@ use Filament\Tables\Table;
 use App\Models\RadioChannel;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ImageColumn;
 use App\Tables\Columns\CustomImageColumn;
 use App\Filament\Resources\RadioChannelResource\Pages;
+use Hugomyb\FilamentMediaAction\Tables\Actions\MediaAction;
 
 class RadioChannelResource extends Resource
 {
@@ -46,10 +46,6 @@ class RadioChannelResource extends Resource
                     ->searchable(),
                 CustomImageColumn::make(RadioChannel::PHOTO)
                     ->label('Photo'),
-                TextColumn::make(RadioChannel::AUDIO_URL)
-                    ->label('Audio URL')
-                    ->sortable()
-                    ->searchable(),
                 TextColumn::make(RadioChannel::SUBTITLE)
                     ->label('Subtitle')
                     ->sortable()
@@ -60,6 +56,12 @@ class RadioChannelResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                MediaAction::make('audio')
+                    ->media(fn($record) => $record->audio_url)
+                    ->label('Play')
+                    ->icon('heroicon-o-musical-note')
+                    ->autoplay()
+                    ->preload(false),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

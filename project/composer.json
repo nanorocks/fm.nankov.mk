@@ -7,9 +7,11 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "blade-ui-kit/blade-heroicons": "^2.6",
         "codeat3/blade-google-material-design-icons": "^1.20",
         "filament/filament": "^3.2",
         "filament/tables": "^3.2",
+        "hugomyb/filament-media-action": "^3.1",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.6",
