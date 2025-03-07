@@ -4,7 +4,9 @@ use App\Models\RadioChannel;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    $stations = RadioChannel::query()->where('audio_url', '!=', null)->get();
+
+    return view('welcome', compact('stations'));
 });
 
 
