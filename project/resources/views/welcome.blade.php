@@ -55,36 +55,6 @@
                         </svg>
                     </button>
                 </div>
-
-                <div class="dock p-5 flex justify-center space-x-2">
-                    <button class="rounded-full w-16 h-16 flex items-center justify-center tooltip text-success"
-                        data-tip="Previous">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            class="w-8 h-8">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 3v18l-7.5-9L19 3zM11.5 3v18l-7.5-9 7.5-9z" />
-                        </svg>
-                    </button>
-
-                    <button
-                        class="rounded-full w-16 h-16 flex items-center justify-center tooltip text-success play-button"
-                        data-tip="Play" data-audio-url="">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            class="w-8 h-8 play-icon">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 3v18l15-9-15-9z" />
-                        </svg>
-                    </button>
-
-                    <button class="rounded-full w-16 h-16 flex items-center justify-center tooltip text-success"
-                        data-tip="Next">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            class="w-8 h-8">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 3v18l7.5-9L5 3zM12.5 3v18l7.5-9-7.5-9z" />
-                        </svg>
-                    </button>
-                </div>
             </div>
 
             <div class="mb-5">
@@ -100,14 +70,13 @@
                                     class="btn btn-success rounded-full absolute inset-0 m-auto w-16 h-16 flex items-center justify-center tooltip play-button"
                                     data-tip="{{ $station['title'] }}" data-audio-url="{{ $station['audio_url'] }}">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" class="w-8 h-8 play-icon">
+                                        stroke="currentColor" class="w-8 h-8 play-icon text-white">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M5 3v18l15-9-15-9z" />
                                     </svg>
                                 </button>
                                 <button class="absolute top-2 right-2 favorite-button"
-                                    data-station-id="{{ $station['id'] }}"
-                                    data-station-title="{{ $station['title'] }}"
+                                    data-station-id="{{ $station['id'] }}" data-station-title="{{ $station['title'] }}"
                                     data-audio-url="{{ $station['audio_url'] }}">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                         stroke="currentColor" class="w-6 h-6 favorite-icon">
@@ -129,8 +98,8 @@
             <ul class="menu bg-base-200 text-base-content min-h-full w-80">
                 <li class="menu-title text-xl bg-transparent shadow-none border-none">
                     <a href="#" class="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" class="inline-block h-5 w-5 mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            class="inline-block h-5 w-5 mr-2">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                         </svg>
@@ -142,7 +111,32 @@
         </div>
     </div>
 
-    <audio id="audio-player" controls style="display:none;"></audio>
+    <div
+        style="background-color: hwb(160.71deg 0% 34.12%); position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50;">
+        <audio id="audio-player" controls class="w-full text-white m-1">
+            <style>
+                #audio-player::-webkit-media-controls-panel {
+                    background-color: hwb(160.71deg 0% 34.12%);
+                    color: #ffffff;
+                    border: transparent;
+                    border-radius: 0 !important;
+                    display: flex;
+                    justify-content: center;
+                }
+
+                #audio-player::-webkit-media-controls-play-button,
+                #audio-player::-webkit-media-controls-pause-button {
+                    color: #10b981;
+                }
+
+                #audio-player::-webkit-media-controls-current-time-display,
+                #audio-player::-webkit-media-controls-time-remaining-display {
+                    color: #ffffff;
+                }
+            </style>
+        </audio>
+    </div>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -150,6 +144,23 @@
             const playButtons = document.querySelectorAll('.play-button');
             const favoriteButtons = document.querySelectorAll('.favorite-button');
             const favoritesList = document.getElementById('favorites-list');
+
+            function resetPlayIcons() {
+                playButtons.forEach(button => {
+                    const playIcon = button.querySelector('.play-icon');
+                    playIcon.innerHTML =
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v18l15-9-15-9z" />';
+                });
+
+                // Reset play icons in the favorites list
+                document.querySelectorAll('.favorite-item').forEach(item => {
+                    const playIcon = item.querySelector('.play-icon');
+                    if (playIcon) {
+                        playIcon.innerHTML =
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v18l15-9-15-9z" />';
+                    }
+                });
+            }
 
             function updateFavoritesList() {
                 const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
@@ -161,7 +172,12 @@
                     li.innerHTML = `
                         <div class="flex items-center space-x-2 w-full text-xs">
                             <img src="${station.photo}" alt="${station.title}" class="w-8 h-8 rounded-full">
-                            <a href="#" class="favorite-item flex-1 menu-title font-light" data-audio-url="${station.audio_url}">${station.title}</a>
+                            <a href="#" class="favorite-item flex-1 menu-title font-light" data-audio-url="${station.audio_url}">
+                                ${station.title}
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4 play-icon text-gray-500">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v18l15-9-15-9z" />
+                                </svg>
+                            </a>
                             <button class="delete-favorite" data-station-id="${station.id}">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -186,9 +202,20 @@
                     item.addEventListener('click', function(event) {
                         event.preventDefault();
                         const audioUrl = this.getAttribute('data-audio-url');
+
+                        // Reset all play icons before updating the clicked one
+                        resetPlayIcons();
+
                         if (audioUrl) {
                             audioPlayer.src = audioUrl;
                             audioPlayer.play();
+
+                            // Update the play icon for the clicked item
+                            const playIcon = this.querySelector('.play-icon');
+                            if (playIcon) {
+                                playIcon.innerHTML =
+                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4h4v16H6zM14 4h4v16h-4z" />';
+                            }
                         }
                     });
                 });
@@ -214,6 +241,9 @@
                 button.addEventListener('click', function() {
                     const audioUrl = this.getAttribute('data-audio-url');
                     const playIcon = this.querySelector('.play-icon');
+
+                    // Reset all play icons before updating the clicked one
+                    resetPlayIcons();
 
                     if (audioPlayer.src !== audioUrl) {
                         audioPlayer.src = audioUrl;
@@ -258,11 +288,7 @@
             });
 
             audioPlayer.addEventListener('ended', function() {
-                playButtons.forEach(button => {
-                    const playIcon = button.querySelector('.play-icon');
-                    playIcon.innerHTML =
-                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v18l15-9-15-9z" />';
-                });
+                resetPlayIcons();
             });
 
             updateFavoritesList();
