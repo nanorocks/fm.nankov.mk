@@ -17,6 +17,7 @@ class RadioChannel extends Model
     public const TITLE = 'title';
     public const AUDIO_URL = 'audio_url';
     public const SUBTITLE = 'subtitle';
+    public const PUBLISHED = 'published';
 
     protected $hidden = [
         self::LINK,
@@ -36,15 +37,19 @@ class RadioChannel extends Model
         self::TITLE,
         self::AUDIO_URL,
         self::SUBTITLE,
+        self::PUBLISHED
     ];
 
     /**
      * Mutator to ensure the photo path is always prefixed with /storage/photos/
+     * and to avoid storing empty values.
      *
-     * @param string $value
+     * @param string|null $value
      */
     public function setPhotoAttribute($value)
     {
-        $this->attributes[self::PHOTO] = '/storage/' . ltrim($value, '/');
+        if (!empty($value)) {
+            $this->attributes[self::PHOTO] = '/storage/' . ltrim($value, '/');
+        }
     }
 }

@@ -8,6 +8,7 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Models\RadioChannel;
 use Filament\Resources\Resource;
+use Filament\Forms\Components\Radio;
 use Filament\Tables\Columns\TextColumn;
 use App\Tables\Columns\CustomImageColumn;
 use App\Filament\Resources\RadioChannelResource\Pages;
@@ -28,6 +29,9 @@ class RadioChannelResource extends Resource
                     ->visibility('public')
                     ->image()
                     ->label('Photo URL'),
+                Forms\Components\Radio::make(RadioChannel::PUBLISHED)
+                    ->boolean()
+                    ->label('Published'),
                 Forms\Components\TextInput::make(RadioChannel::TITLE)
                     ->label('Title'),
                 Forms\Components\TextInput::make(RadioChannel::AUDIO_URL)
@@ -45,6 +49,10 @@ class RadioChannelResource extends Resource
                     ->label('Title')
                     ->sortable()
                     ->searchable(),
+                TextColumn::make(RadioChannel::PUBLISHED)
+                    ->label('Published')
+                    ->sortable()
+                    ->formatStateUsing(fn(bool $state): string => $state ? 'Yes' : 'No'),
                 CustomImageColumn::make(RadioChannel::PHOTO)
 
                     ->label('Photo'),
