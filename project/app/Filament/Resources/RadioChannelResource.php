@@ -54,7 +54,6 @@ class RadioChannelResource extends Resource
                     ->sortable()
                     ->formatStateUsing(fn(bool $state): string => $state ? 'Yes' : 'No'),
                 CustomImageColumn::make(RadioChannel::PHOTO)
-
                     ->label('Photo'),
                 TextColumn::make(RadioChannel::SUBTITLE)
                     ->label('Subtitle')
@@ -75,6 +74,30 @@ class RadioChannelResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\BulkAction::make('publish')
+                    ->label('Set as Published')
+                    ->icon('heroicon-o-check-circle')
+                    ->action(function ($records) {
+                        // Extract IDs from the collection
+                        $recordIds = $records->pluck('id')->toArray();
+
+                        // Update the published field for the selected records
+                        RadioChannel::whereIn('id', $recordIds)->update(['published' => true]);
+                    })
+                    ->requiresConfirmation()
+                    ->color('success'),
+                Tables\Actions\BulkAction::make('unpublish')
+                    ->label('Set as Unpublished')
+                    ->icon('heroicon-o-x-circle')
+                    ->action(function ($records) {
+                        // Extract IDs from the collection
+                        $recordIds = $records->pluck('id')->toArray();
+
+                        // Update the published field for the selected records
+                        RadioChannel::whereIn('id', $recordIds)->update(['published' => false]);
+                    })
+                    ->requiresConfirmation()
+                    ->color('danger'),
             ]);
     }
 
