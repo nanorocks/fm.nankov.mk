@@ -24,8 +24,9 @@ class RadioChannelResource extends Resource
         return $form
             ->schema([
                 Forms\Components\FileUpload::make(RadioChannel::PHOTO)
+                    ->directory('photos')
+                    ->visibility('public')
                     ->image()
-                    ->imageEditor()
                     ->label('Photo URL'),
                 Forms\Components\TextInput::make(RadioChannel::TITLE)
                     ->label('Title'),
@@ -45,6 +46,7 @@ class RadioChannelResource extends Resource
                     ->sortable()
                     ->searchable(),
                 CustomImageColumn::make(RadioChannel::PHOTO)
+
                     ->label('Photo'),
                 TextColumn::make(RadioChannel::SUBTITLE)
                     ->label('Subtitle')

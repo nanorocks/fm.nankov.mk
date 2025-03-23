@@ -37,4 +37,14 @@ class RadioChannel extends Model
         self::AUDIO_URL,
         self::SUBTITLE,
     ];
+
+    /**
+     * Mutator to ensure the photo path is always prefixed with /storage/photos/
+     *
+     * @param string $value
+     */
+    public function setPhotoAttribute($value)
+    {
+        $this->attributes[self::PHOTO] = '/storage/' . ltrim($value, '/');
+    }
 }
