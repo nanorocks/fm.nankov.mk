@@ -27,17 +27,14 @@ class FmRadioScraper extends BasicSpider
 
     public function parse(Response $response): \Generator
     {
-        $stations = $response->filter('.col-md-4 .col-img')->each(function ($node) {
-            $link = $node->filter('a')->attr('href');
-            $img = $node->filter('img');
-            $src = $img->attr('src');
-            $alt = $img->attr('alt');
-
+        $stations = $response->filter('a.radio-card')->each(function ($node) {
             return [
-                'link' => $link,
-                'src' => $src,
-                'alt' => $alt,
-                'base_url' => config('app.radio_station_url'),
+                'link'      => $node->attr('href'),
+                'alt'       => $node->attr('data-name'),
+                'src'       => $node->attr('data-logo'),
+                'audio_url' => $node->attr('data-stream'),
+                'subtitle'  => $node->attr('data-categories'),
+                'base_url'  => config('app.radio_station_url'),
             ];
         });
 

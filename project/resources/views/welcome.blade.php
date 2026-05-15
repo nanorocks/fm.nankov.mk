@@ -1,300 +1,839 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>{{ config('app.name') }}</title>
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
-
+    <title>FM Macedonia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --green: #1ED760;
+            --green-dim: #169c43;
+            --black: #000000;
+            --bg: #121212;
+            --card: #181818;
+            --hover: #282828;
+            --border: #2a2a2a;
+            --text: #FFFFFF;
+            --muted: #A7A7A7;
+            --dim: #535353;
+            --player-h: 90px;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Figtree', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+        /* ── Layout shell ── */
+        #app {
+            display: grid;
+            grid-template-rows: 1fr var(--player-h);
+            grid-template-columns: 240px 1fr;
+            height: 100vh;
+            gap: 8px;
+            padding: 8px;
+            padding-bottom: 0;
+        }
+
+        @media (max-width: 1023px) {
+            #app { grid-template-columns: 1fr; }
+            #sidebar { display: none; }
+        }
+
+        /* ── Sidebar ── */
+        #sidebar {
+            grid-row: 1;
+            grid-column: 1;
+            background: var(--black);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Main ── */
+        #main {
+            grid-row: 1;
+            grid-column: 2;
+            background: var(--bg);
+            border-radius: 10px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        @media (max-width: 1023px) {
+            #main { grid-column: 1; }
+        }
+
+        /* ── Player bar ── */
+        #player-bar {
+            grid-row: 2;
+            grid-column: 1 / -1;
+            background: #181818;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 16px;
+        }
+
+        /* ── Top gradient header ── */
+        #main-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(18,18,18,0.95) 60%, transparent);
+            backdrop-filter: blur(6px);
+        }
+
+        /* ── Quick-picks (featured grid) ── */
+        .quick-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        @media (min-width: 640px) { .quick-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        .quick-card {
+            display: flex;
+            align-items: center;
+            background: var(--hover);
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: background 0.15s;
+            position: relative;
+        }
+        .quick-card:hover { background: #3e3e3e; }
+        .quick-card .qc-art {
+            width: 64px;
+            height: 64px;
+            flex-shrink: 0;
+        }
+        .quick-card .qc-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            flex: 1;
+            padding: 0 12px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .quick-card .qc-play {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.2s, transform 0.2s;
+            flex-shrink: 0;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .quick-card:hover .qc-play,
+        .quick-card.is-active .qc-play { opacity: 1; transform: translateY(0); }
+        .quick-card.is-active { background: #1a2e1a; }
+
+        /* ── Station cards ── */
+        .station-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        @media (min-width: 480px)  { .station-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 768px)  { .station-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 1280px) { .station-grid { grid-template-columns: repeat(5, 1fr); } }
+        @media (min-width: 1536px) { .station-grid { grid-template-columns: repeat(6, 1fr); } }
+
+        .station-card {
+            background: var(--card);
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            animation: fadeUp 0.4s ease both;
+        }
+        .station-card:hover { background: var(--hover); }
+        .station-card.is-active { background: #1f2e1f; box-shadow: 0 0 0 1px rgba(30,215,96,.25); }
+
+        .card-art-wrap {
+            position: relative;
+            padding-bottom: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5);
+        }
+        .card-art-inner { position: absolute; inset: 0; }
+        .card-art-inner img, .card-art-inner .placeholder {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .card-play-btn {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .station-card:hover .card-play-btn,
+        .station-card.is-active .card-play-btn { opacity: 1; transform: translateY(0); }
+
+        /* ── Equalizer ── */
+        .eq {
+            display: none;
+            align-items: flex-end;
+            gap: 2px;
+            height: 20px;
+        }
+        .is-active .eq { display: flex; }
+        .eq span {
+            display: block;
+            width: 3px;
+            background: var(--green);
+            border-radius: 2px;
+        }
+        .eq span:nth-child(1) { animation: bar1 .7s ease-in-out infinite; }
+        .eq span:nth-child(2) { animation: bar2 .5s ease-in-out infinite; }
+        .eq span:nth-child(3) { animation: bar3 .8s ease-in-out infinite; }
+        .eq span:nth-child(4) { animation: bar1 .6s ease-in-out infinite .1s; }
+
+        .card-eq-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .is-active .card-eq-overlay { display: flex; }
+        .card-eq-overlay .eq { height: 28px; }
+        .card-eq-overlay .eq span { width: 4px; background: var(--green); }
+
+        @keyframes bar1 { 0%,100%{height:4px} 50%{height:18px} }
+        @keyframes bar2 { 0%,100%{height:14px} 50%{height:6px} }
+        @keyframes bar3 { 0%,100%{height:8px} 50%{height:20px} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+
+        /* ── Player ── */
+        #player-left { display: flex; align-items: center; gap: 12px; flex: 0 0 30%; min-width: 0; }
+        #player-center { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+        #player-right { display: flex; align-items: center; gap: 10px; flex: 0 0 30%; justify-content: flex-end; }
+        @media (max-width: 639px) { #player-right { display: none; } #player-left { flex: 1; } #player-center { flex: 0; } }
+
+        #player-art-box {
+            width: 56px; height: 56px; border-radius: 4px;
+            overflow: hidden; flex-shrink: 0; background: var(--hover);
+            display: none;
+        }
+        @media (min-width: 480px) { #player-art-box { display: block; } }
+
+        .ctrl-btn {
+            background: none; border: none; cursor: pointer;
+            color: var(--muted); transition: color 0.15s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .ctrl-btn:hover { color: var(--text); }
+
+        #pp-btn {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--text); border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: transform 0.15s;
+        }
+        #pp-btn:hover { transform: scale(1.07); }
+        #pp-btn:active { transform: scale(0.96); }
+
+        #vol-slider {
+            -webkit-appearance: none; appearance: none;
+            width: 76px; height: 4px; border-radius: 2px;
+            background: var(--dim); outline: none; cursor: pointer;
+        }
+        #vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 12px; height: 12px;
+            border-radius: 50%; background: var(--text);
+            opacity: 0; transition: opacity .15s;
+        }
+        #vol-slider:hover::-webkit-slider-thumb { opacity: 1; }
+
+        /* ── Sidebar styles ── */
+        .sb-nav-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 8px 12px; border-radius: 6px;
+            font-size: .875rem; font-weight: 600;
+            color: var(--muted); transition: color .15s, background .15s;
+            cursor: pointer; text-decoration: none;
+        }
+        .sb-nav-item:hover, .sb-nav-item.active { color: var(--text); }
+
+        .sb-fav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 6px 8px; border-radius: 6px;
+            cursor: pointer; transition: background .15s;
+        }
+        .sb-fav-item:hover { background: var(--hover); }
+
+        /* ── Live badge ── */
+        .live-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: rgba(30,215,96,.12); border: 1px solid rgba(30,215,96,.3);
+            border-radius: 20px; padding: 3px 10px;
+            font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+            color: var(--green); text-transform: uppercase;
+        }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: livePulse 1.5s ease-in-out infinite; }
+
+        /* ── Mobile sidebar drawer ── */
+        #mobile-drawer {
+            position: fixed; inset: 0; z-index: 100;
+            display: none;
+        }
+        #mobile-drawer.open { display: block; }
+        .drawer-bg { position: absolute; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(3px); }
+        .drawer-panel {
+            position: absolute; left: 0; top: 0; bottom: 0; width: 280px;
+            background: #111; padding: 20px 16px; overflow-y: auto;
+            transform: translateX(-100%); transition: transform .25s ease;
+        }
+        #mobile-drawer.open .drawer-panel { transform: translateX(0); }
+
+        /* ── Vinyl spin for now-playing art ── */
+        @keyframes vinyl { to { transform: rotate(360deg); } }
+        #player-art-box.spinning { animation: vinyl 4s linear infinite; }
+    </style>
 </head>
-
 <body>
-    <div class="drawer lg:drawer-open">
-        <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
-        <div class="drawer-content flex flex-col">
-            <!-- Page content here -->
-            <div class="navbar bg-base-100 shadow-sm">
-                <div class="flex-none">
-                    <label for="my-drawer-2" class="btn btn-square btn-ghost drawer-button lg:hidden">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            class="inline-block h-5 w-5 stroke-current">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 6h16M4 12h16M4 18h16">
-                            </path>
-                        </svg>
-                    </label>
-                </div>
-                <div class="flex-1">
-                    <a class="btn btn-ghost text-lg sm:text-xl">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            class="inline-block h-5 w-5 mr-2 hidden sm:inline-block">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-2v13">
-                            </path>
-                            <circle cx="6" cy="18" r="3" stroke-linecap="round" stroke-linejoin="round"
-                                stroke-width="2"></circle>
-                            <circle cx="18" cy="16" r="3" stroke-linecap="round" stroke-linejoin="round"
-                                stroke-width="2"></circle>
-                        </svg>
-                        <span class="hidden sm:inline">FM radio stations - Macedonia</span>
-                        <span class="inline sm:hidden text-small">FM Macedonia</span>
-                    </a>
-                </div>
-                <div class="flex-none">
-                    <button class="btn btn-square btn-ghost">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            class="inline-block h-5 w-5 stroke-current">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z">
-                            </path>
-                        </svg>
-                    </button>
-                </div>
+
+{{-- ─── App Shell ─────────────────────────────── --}}
+<div id="app">
+
+    {{-- ─── SIDEBAR ─────────────────────────────── --}}
+    <aside id="sidebar">
+        {{-- Logo --}}
+        <div style="padding: 20px 16px 8px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1ED760" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>
+                </svg>
+                <span style="font-family:'Outfit',sans-serif; font-size:1.1rem; font-weight:800; letter-spacing:-.01em;">FM Macedonia</span>
             </div>
-
-            <div class="mb-5">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 p-4 mb-5">
-                    @foreach ($stations as $station)
-                        <div class="card shadow-sm relative">
-                            <figure class="relative tooltip">
-                                <img src="{{ $station['photo'] }}" alt="{{ $station['title'] }}"
-                                    class="w-full rounded" />
-                                <div class="absolute inset-0 bg-black opacity-30 rounded"></div>
-
-                                <button
-                                    class="btn btn-success rounded-full absolute inset-0 m-auto w-16 h-16 flex items-center justify-center tooltip play-button"
-                                    data-tip="{{ $station['title'] }}" data-audio-url="{{ $station['audio_url'] }}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" class="w-8 h-8 play-icon text-white">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 3v18l15-9-15-9z" />
-                                    </svg>
-                                </button>
-                                <button class="absolute top-2 right-2 favorite-button"
-                                    data-station-id="{{ $station['id'] }}" data-station-title="{{ $station['title'] }}"
-                                    data-audio-url="{{ $station['audio_url'] }}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" class="w-6 h-6 favorite-icon">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                                    </svg>
-                                </button>
-                            </figure>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-
         </div>
 
+        {{-- Nav --}}
+        <nav style="padding: 8px 8px 0;">
+            <a class="sb-nav-item active" href="#">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                Home
+            </a>
+            <a class="sb-nav-item" href="#">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Search
+            </a>
+        </nav>
 
-        <div class="drawer-side">
-            <label for="my-drawer-2" aria-label="close sidebar" class="drawer-overlay"></label>
-            <ul class="menu bg-base-200 text-base-content min-h-full w-80">
-                <li class="menu-title text-xl bg-transparent shadow-none border-none">
-                    <a href="#" class="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            class="inline-block h-5 w-5 mr-2">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        {{-- Library --}}
+        <div style="margin-top:16px; padding: 0 8px; display:flex; align-items:center; justify-content:space-between;">
+            <button class="sb-nav-item" style="gap:10px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Your Library
+            </button>
+            <button onclick="toggleFavoriteFilter()" style="background:none;border:none;cursor:pointer;color:var(--muted);" class="ctrl-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+        </div>
+
+        {{-- Favorites list --}}
+        <div id="sb-favs" style="flex:1; overflow-y:auto; padding: 8px 8px; margin-top:4px;">
+            <p id="sb-empty" style="color:var(--dim); font-size:.75rem; padding:8px 4px;">
+                Songs you like will appear here
+            </p>
+        </div>
+    </aside>
+
+    {{-- ─── MAIN CONTENT ─────────────────────────── --}}
+    <main id="main">
+
+        {{-- Sticky header --}}
+        <div id="main-header">
+            {{-- Mobile: hamburger + logo --}}
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button id="menu-btn" onclick="openDrawer()" style="display:none; background:none; border:none; cursor:pointer; color:white; padding:4px;" class="lg-hide">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <span id="mobile-title" style="display:none; font-family:'Outfit',sans-serif; font-weight:800; font-size:.95rem;">FM Macedonia</span>
+            </div>
+
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                Live · {{ $stations->count() }} stations
+            </div>
+        </div>
+
+        {{-- Page content --}}
+        <div style="padding: 0 24px 32px;">
+
+            {{-- Greeting --}}
+            <div style="margin-bottom:24px;">
+                <h1 style="font-family:'Outfit',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.2rem); letter-spacing:-.02em; line-height:1.1;">
+                    Macedonian Radio
+                </h1>
+                <p style="color:var(--muted); font-size:.875rem; margin-top:4px;">Stream live FM stations</p>
+            </div>
+
+            {{-- Quick Picks ─ first 6 stations --}}
+            @if($stations->count())
+            <div class="quick-grid" style="margin-bottom:40px;">
+                @foreach($stations->take(6) as $s)
+                @php
+                    $h1 = abs(crc32($s->title)) % 360;
+                    $h2 = ($h1 + 45) % 360;
+                    $gradient = "linear-gradient(135deg,hsl({$h1},55%,28%),hsl({$h2},60%,18%))";
+                @endphp
+                <div
+                    class="quick-card"
+                    id="qc-{{ $s->id }}"
+                    onclick="play({{ $s->id }})"
+                    data-id="{{ $s->id }}"
+                >
+                    <div class="qc-art">
+                        @if($s->photo)
+                            <img src="{{ $s->photo }}" alt="{{ $s->title }}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div class=\'placeholder\' style=\'width:100%;height:100%;background:{{ $gradient }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:rgba(255,255,255,.8);\'>{{ strtoupper(substr($s->title,0,1)) }}</div>'">
+                        @else
+                            <div style="width:100%;height:100%;background:{{ $gradient }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:rgba(255,255,255,.8);">{{ strtoupper(substr($s->title,0,1)) }}</div>
+                        @endif
+                    </div>
+                    <span class="qc-title">{{ $s->title }}</span>
+
+                    {{-- Inline eq for active state --}}
+                    <div class="eq" style="margin-right:12px;" id="qc-eq-{{ $s->id }}">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+
+                    <div class="qc-play" id="qc-play-{{ $s->id }}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="black" stroke="black" stroke-width="2" id="qc-play-icon-{{ $s->id }}" style="margin-left:2px">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
                         </svg>
-                        <span>Favorites</span>
-                    </a>
-                </li>
-                <div id="favorites-list"></div>
-            </ul>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
+
+            {{-- All Stations --}}
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <h2 style="font-family:'Outfit',sans-serif; font-weight:700; font-size:1.25rem; letter-spacing:-.01em;">All stations</h2>
+                <span style="color:var(--muted); font-size:.8rem; font-weight:600; cursor:pointer;" onmouseenter="this.style.color='white'" onmouseleave="this.style.color='var(--muted)'">Show all</span>
+            </div>
+
+            <div class="station-grid">
+                @foreach($stations as $i => $s)
+                @php
+                    $h1 = abs(crc32($s->title)) % 360;
+                    $h2 = ($h1 + 45) % 360;
+                    $gradient = "linear-gradient(135deg,hsl({$h1},55%,28%),hsl({$h2},60%,18%))";
+                @endphp
+                <div
+                    class="station-card"
+                    id="sc-{{ $s->id }}"
+                    data-id="{{ $s->id }}"
+                    onclick="play({{ $s->id }})"
+                    style="animation-delay:{{ min($i, 11) * 55 }}ms"
+                >
+                    <div class="card-art-wrap">
+                        <div class="card-art-inner">
+                            @if($s->photo)
+                                <img src="{{ $s->photo }}" alt="{{ $s->title }}" onerror="this.outerHTML='<div class=\'placeholder\' style=\'width:100%;height:100%;background:{{ $gradient }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2rem;color:rgba(255,255,255,.85);\'>{{ strtoupper(substr($s->title,0,1)) }}</div>'">
+                            @else
+                                <div style="width:100%;height:100%;background:{{ $gradient }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2rem;color:rgba(255,255,255,.85);">{{ strtoupper(substr($s->title,0,1)) }}</div>
+                            @endif
+
+                            {{-- EQ overlay --}}
+                            <div class="card-eq-overlay" id="sc-eq-{{ $s->id }}">
+                                <div class="eq" style="height:28px;">
+                                    <span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Hover play button --}}
+                        <div class="card-play-btn" id="sc-play-{{ $s->id }}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="black" id="sc-play-icon-{{ $s->id }}" style="margin-left:2px">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div style="font-weight:600; font-size:.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px;">{{ $s->title }}</div>
+                    <div style="color:var(--muted); font-size:.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px;">
+                        <div class="eq" id="sc-mini-eq-{{ $s->id }}" style="height:14px;">
+                            <span></span><span></span><span></span>
+                        </div>
+                        {{ $s->subtitle ?: 'FM Radio · Live' }}
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </main>
+
+    {{-- ─── PLAYER BAR ────────────────────────────── --}}
+    <div id="player-bar">
+        {{-- Left: art + info + like --}}
+        <div id="player-left">
+            <div id="player-art-box">
+                <div id="player-art-inner" style="width:100%;height:100%;background:var(--hover);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"/></svg>
+                </div>
+            </div>
+            <div style="min-width:0; flex:1;">
+                <div id="player-title" style="font-size:.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text);">—</div>
+                <div id="player-sub" style="font-size:.72rem; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Select a station</div>
+            </div>
+            <button id="like-btn" onclick="toggleLike()" class="ctrl-btn" style="flex-shrink:0;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="like-icon"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+        </div>
+
+        {{-- Center: controls + live --}}
+        <div id="player-center">
+            <div style="display:flex; align-items:center; gap:20px;">
+                <button class="ctrl-btn" onclick="prevStation()" title="Previous">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+                </button>
+                <button id="pp-btn" onclick="togglePlay()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="black" id="pp-icon">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                </button>
+                <button class="ctrl-btn" onclick="nextStation()" title="Next">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+                </button>
+            </div>
+            <div class="live-badge" style="font-size:.62rem; padding:2px 8px;">
+                <span class="live-dot" style="width:5px;height:5px;"></span>
+                LIVE
+            </div>
+        </div>
+
+        {{-- Right: volume --}}
+        <div id="player-right">
+            <button class="ctrl-btn" onclick="toggleMute()" id="vol-btn">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="vol-icon"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </button>
+            <input type="range" id="vol-slider" min="0" max="100" value="80" oninput="setVol(this.value)">
         </div>
     </div>
+</div>{{-- /#app --}}
 
-    <div
-        style="background-color: hwb(160.71deg 0% 34.12%); position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50;">
-        <audio id="audio-player" controls class="w-full text-white m-1">
-            <style>
-                #audio-player::-webkit-media-controls-panel {
-                    background-color: hwb(160.71deg 0% 34.12%);
-                    color: #ffffff;
-                    border: transparent;
-                    border-radius: 0 !important;
-                    display: flex;
-                    justify-content: center;
-                }
-
-                #audio-player::-webkit-media-controls-play-button,
-                #audio-player::-webkit-media-controls-pause-button {
-                    color: #10b981;
-                }
-
-                #audio-player::-webkit-media-controls-current-time-display,
-                #audio-player::-webkit-media-controls-time-remaining-display {
-                    color: #ffffff;
-                }
-            </style>
-        </audio>
+{{-- ─── MOBILE DRAWER ───────────────────────────── --}}
+<div id="mobile-drawer">
+    <div class="drawer-bg" onclick="closeDrawer()"></div>
+    <div class="drawer-panel">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+            <span style="font-family:'Outfit',sans-serif; font-weight:800; font-size:1rem;">Your Library</span>
+            <button onclick="closeDrawer()" style="background:none;border:none;cursor:pointer;color:var(--muted);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div id="drawer-favs">
+            <p style="color:var(--dim); font-size:.8rem;">Stations you like will appear here</p>
+        </div>
     </div>
+</div>
 
+{{-- ─── AUDIO ────────────────────────────────────── --}}
+<audio id="audio" preload="none"></audio>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const audioPlayer = document.getElementById('audio-player');
-            const playButtons = document.querySelectorAll('.play-button');
-            const favoriteButtons = document.querySelectorAll('.favorite-button');
-            const favoritesList = document.getElementById('favorites-list');
+@php
+$stationsJs = $stations->values()->map(fn($s) => [
+    'id'        => $s->id,
+    'title'     => $s->title,
+    'subtitle'  => $s->subtitle,
+    'photo'     => $s->photo,
+    'audio_url' => $s->audio_url,
+]);
+@endphp
 
-            function resetPlayIcons() {
-                playButtons.forEach(button => {
-                    const playIcon = button.querySelector('.play-icon');
-                    playIcon.innerHTML =
-                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v18l15-9-15-9z" />';
-                });
+<script>
+const audio = document.getElementById('audio');
+const stations = @json($stationsJs);
 
-                // Reset play icons in the favorites list
-                document.querySelectorAll('.favorite-item').forEach(item => {
-                    const playIcon = item.querySelector('.play-icon');
-                    if (playIcon) {
-                        playIcon.innerHTML =
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v18l15-9-15-9z" />';
-                    }
-                });
-            }
+let activeId   = null;
+let activeIdx  = -1;
+let playing    = false;
+let muted      = false;
 
-            function updateFavoritesList() {
-                const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-                favoritesList.innerHTML = '';
-                favorites.forEach(station => {
-                    const li = document.createElement('li');
-                    li.classList.add('relative', 'group', 'flex', 'items-center', 'space-x-2', 'p-2',
-                        'hover:bg-gray-100', 'rounded');
-                    li.innerHTML = `
-                        <div class="flex items-center space-x-2 w-full text-xs">
-                            <img src="${station.photo}" alt="${station.title}" class="w-8 h-8 rounded-full">
-                            <a href="#" class="favorite-item flex-1 menu-title font-light" data-audio-url="${station.audio_url}">
-                                ${station.title}
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4 play-icon text-gray-500">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v18l15-9-15-9z" />
-                                </svg>
-                            </a>
-                            <button class="delete-favorite" data-station-id="${station.id}">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    `;
-                    favoritesList.appendChild(li);
-                });
+// ── Responsive show/hide ──────────────────────────────
+const mq = window.matchMedia('(max-width: 1023px)');
+function applyMq() {
+    const mob = mq.matches;
+    document.getElementById('menu-btn').style.display   = mob ? 'block' : 'none';
+    document.getElementById('mobile-title').style.display = mob ? 'block' : 'none';
+}
+mq.addEventListener('change', applyMq);
+applyMq();
 
-                document.querySelectorAll('.delete-favorite').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const stationId = this.getAttribute('data-station-id');
-                        let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-                        favorites = favorites.filter(station => station.id !== stationId);
-                        localStorage.setItem('favorites', JSON.stringify(favorites));
-                        updateFavoritesList();
-                    });
-                });
+// ── Play ──────────────────────────────────────────────
+function play(id) {
+    const idx = stations.findIndex(s => s.id == id);
+    if (idx < 0) return;
+    const s = stations[idx];
 
-                document.querySelectorAll('.favorite-item').forEach(item => {
-                    item.addEventListener('click', function(event) {
-                        event.preventDefault();
-                        const audioUrl = this.getAttribute('data-audio-url');
+    if (activeId === id && playing) { pause(); return; }
 
-                        // Reset all play icons before updating the clicked one
-                        resetPlayIcons();
+    clearActive();
+    activeId  = id;
+    activeIdx = idx;
 
-                        if (audioUrl) {
-                            audioPlayer.src = audioUrl;
-                            audioPlayer.play();
+    audio.src = s.audio_url;
+    audio.volume = document.getElementById('vol-slider').value / 100;
+    audio.play().then(() => { playing = true; activateUI(s); }).catch(() => {});
+}
 
-                            // Update the play icon for the clicked item
-                            const playIcon = this.querySelector('.play-icon');
-                            if (playIcon) {
-                                playIcon.innerHTML =
-                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4h4v16H6zM14 4h4v16h-4z" />';
-                            }
-                        }
-                    });
-                });
-            }
+function pause() {
+    audio.pause();
+    playing = false;
+    setPpIcon(false);
+    clearActive();
+}
 
-            function updateFavoriteButtons() {
-                const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-                favoriteButtons.forEach(button => {
-                    const stationId = button.getAttribute('data-station-id');
-                    const isFavorite = favorites.some(station => station.id === stationId);
-                    const favoriteIcon = button.querySelector('.favorite-icon');
-                    if (isFavorite) {
-                        favoriteIcon.innerHTML =
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />';
-                    } else {
-                        favoriteIcon.innerHTML =
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />';
-                    }
-                });
-            }
+function togglePlay() {
+    if (!activeId) return;
+    if (playing) { pause(); }
+    else {
+        audio.play().then(() => { playing = true; setPpIcon(true); setActive(activeId); });
+    }
+}
 
-            playButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const audioUrl = this.getAttribute('data-audio-url');
-                    const playIcon = this.querySelector('.play-icon');
+function nextStation() {
+    if (activeIdx < stations.length - 1) {
+        const n = stations[activeIdx + 1];
+        play(n.id);
+    }
+}
 
-                    // Reset all play icons before updating the clicked one
-                    resetPlayIcons();
+function prevStation() {
+    if (activeIdx > 0) {
+        const p = stations[activeIdx - 1];
+        play(p.id);
+    }
+}
 
-                    if (audioPlayer.src !== audioUrl) {
-                        audioPlayer.src = audioUrl;
-                        audioPlayer.play();
-                        playIcon.innerHTML =
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4h4v16H6zM14 4h4v16h-4z" />';
-                    } else if (audioPlayer.paused) {
-                        audioPlayer.play();
-                        playIcon.innerHTML =
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4h4v16H6zM14 4h4v16h-4z" />';
-                    } else {
-                        audioPlayer.pause();
-                        playIcon.innerHTML =
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v18l15-9-15-9z" />';
-                    }
-                });
-            });
+// ── UI helpers ────────────────────────────────────────
+function activateUI(s) {
+    // Player bar info
+    document.getElementById('player-title').textContent = s.title;
+    document.getElementById('player-sub').textContent   = s.subtitle || 'FM Radio · Live';
 
-            favoriteButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const stationId = this.getAttribute('data-station-id');
-                    const stationTitle = this.getAttribute('data-station-title');
-                    const stationAudioUrl = this.getAttribute('data-audio-url');
-                    const stationPhoto = this.closest('.card').querySelector('img').src;
-                    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    // Art
+    const box = document.getElementById('player-art-box');
+    box.style.display = 'block';
+    const inner = document.getElementById('player-art-inner');
+    if (s.photo) {
+        inner.innerHTML = `<img src="${s.photo}" alt="${s.title}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;background:#333;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;\\'>${s.title[0]?.toUpperCase()}</div>'">`;
+    } else {
+        const h = Math.abs(s.title.split('').reduce((a,c)=>a+c.charCodeAt(0),0)) % 360;
+        inner.innerHTML = `<div style="width:100%;height:100%;background:linear-gradient(135deg,hsl(${h},55%,28%),hsl(${(h+45)%360},60%,18%));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:rgba(255,255,255,.85);">${s.title[0]?.toUpperCase()}</div>`;
+    }
 
-                    if (favorites.some(station => station.id === stationId)) {
-                        favorites = favorites.filter(station => station.id !== stationId);
-                    } else {
-                        favorites.push({
-                            id: stationId,
-                            title: stationTitle,
-                            audio_url: stationAudioUrl,
-                            photo: stationPhoto
-                        });
-                    }
+    setPpIcon(true);
+    setActive(s.id);
+    updateLikeIcon(s.id);
+}
 
-                    localStorage.setItem('favorites', JSON.stringify(favorites));
-                    updateFavoritesList();
-                    updateFavoriteButtons();
-                });
-            });
+function setActive(id) {
+    // Station cards
+    document.querySelectorAll('.station-card').forEach(el => {
+        el.classList.toggle('is-active', el.dataset.id == id);
+    });
+    // Quick cards
+    document.querySelectorAll('.quick-card').forEach(el => {
+        const active = el.dataset.id == id;
+        el.classList.toggle('is-active', active);
+        const playIcon = document.getElementById(`qc-play-icon-${el.dataset.id}`);
+        if (playIcon) {
+            playIcon.innerHTML = active
+                ? '<rect x="6" y="4" width="4" height="16" fill="black"/><rect x="14" y="4" width="4" height="16" fill="black"/>'
+                : '<polygon points="5 3 19 12 5 21 5 3"/>';
+        }
+        // Show/hide eq in quick card
+        const qcEq = document.getElementById(`qc-eq-${el.dataset.id}`);
+        if (qcEq) qcEq.style.display = active ? 'flex' : 'none';
+        const qcPlay = document.getElementById(`qc-play-${el.dataset.id}`);
+        if (qcPlay) qcPlay.style.opacity = active ? '1' : '';
+    });
+    // Card play icons
+    document.querySelectorAll('.station-card').forEach(el => {
+        const scIcon = document.getElementById(`sc-play-icon-${el.dataset.id}`);
+        if (scIcon) {
+            scIcon.innerHTML = el.dataset.id == id
+                ? '<rect x="6" y="4" width="4" height="16" fill="black"/><rect x="14" y="4" width="4" height="16" fill="black"/>'
+                : '<polygon points="5 3 19 12 5 21 5 3"/>';
+        }
+        const scPlay = document.getElementById(`sc-play-${el.dataset.id}`);
+        if (scPlay) scPlay.style.opacity = el.dataset.id == id ? '1' : '';
+    });
+}
 
-            audioPlayer.addEventListener('ended', function() {
-                resetPlayIcons();
-            });
+function clearActive() {
+    playing = false;
+    setPpIcon(false);
+    document.querySelectorAll('.station-card').forEach(el => {
+        el.classList.remove('is-active');
+        const ic = document.getElementById(`sc-play-icon-${el.dataset.id}`);
+        if (ic) ic.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+        const pb = document.getElementById(`sc-play-${el.dataset.id}`);
+        if (pb) pb.style.opacity = '';
+    });
+    document.querySelectorAll('.quick-card').forEach(el => {
+        el.classList.remove('is-active');
+        const ic = document.getElementById(`qc-play-icon-${el.dataset.id}`);
+        if (ic) ic.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+        const qe = document.getElementById(`qc-eq-${el.dataset.id}`);
+        if (qe) qe.style.display = 'none';
+    });
+}
 
-            updateFavoritesList();
-            updateFavoriteButtons();
-        });
-    </script>
+function setPpIcon(isPlay) {
+    document.getElementById('pp-icon').innerHTML = isPlay
+        ? '<rect x="6" y="4" width="4" height="16" fill="black"/><rect x="14" y="4" width="4" height="16" fill="black"/>'
+        : '<polygon points="5 3 19 12 5 21 5 3"/>';
+}
+
+// ── Volume ─────────────────────────────────────────────
+function setVol(v) {
+    audio.volume = v / 100;
+    muted = (v == 0);
+    updateVolIcon(v);
+}
+
+function toggleMute() {
+    const sl = document.getElementById('vol-slider');
+    if (muted) { sl.value = 80; audio.volume = 0.8; muted = false; updateVolIcon(80); }
+    else        { sl.value = 0;  audio.volume = 0;   muted = true;  updateVolIcon(0); }
+}
+
+function updateVolIcon(v) {
+    const paths = v == 0
+        ? '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>'
+        : v < 50
+            ? '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>'
+            : '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>';
+    document.getElementById('vol-icon').innerHTML = paths;
+}
+
+// ── Favorites ──────────────────────────────────────────
+function getFavs()      { return JSON.parse(localStorage.getItem('fm_favs') || '[]'); }
+function saveFavs(f)    { localStorage.setItem('fm_favs', JSON.stringify(f)); }
+function isLiked(id)    { return getFavs().some(f => f.id == id); }
+
+function toggleLike() {
+    if (!activeId) return;
+    const s = stations.find(s => s.id == activeId);
+    if (!s) return;
+    let favs = getFavs();
+    const idx = favs.findIndex(f => f.id == s.id);
+    if (idx >= 0) favs.splice(idx, 1);
+    else favs.push(s);
+    saveFavs(favs);
+    updateLikeIcon(activeId);
+    renderFavs();
+}
+
+function updateLikeIcon(id) {
+    const ic = document.getElementById('like-icon');
+    if (!ic) return;
+    ic.setAttribute('fill', isLiked(id) ? '#1ED760' : 'none');
+    ic.setAttribute('stroke', isLiked(id) ? '#1ED760' : 'currentColor');
+}
+
+function renderFavs() {
+    const favs = getFavs();
+    const empty = '<p style="color:var(--dim);font-size:.75rem;padding:4px;">Stations you like will appear here</p>';
+    const html = favs.length ? favs.map(f => `
+        <div class="sb-fav-item" onclick="play(${f.id})">
+            <div style="width:40px;height:40px;border-radius:4px;overflow:hidden;flex-shrink:0;background:var(--hover);">
+                ${f.photo
+                    ? `<img src="${f.photo}" alt="${f.title}" style="width:100%;height:100%;object-fit:cover;">`
+                    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:var(--muted);">${(f.title||'R')[0].toUpperCase()}</div>`
+                }
+            </div>
+            <div style="min-width:0;flex:1;">
+                <div style="font-size:.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${activeId==f.id?'var(--green)':'var(--text)'};">${f.title}</div>
+                <div style="font-size:.7rem;color:var(--muted);">FM Radio</div>
+            </div>
+            <button onclick="event.stopPropagation(); removeFav(${f.id})" style="background:none;border:none;cursor:pointer;color:var(--dim);flex-shrink:0;" onmouseenter="this.style.color='white'" onmouseleave="this.style.color='var(--dim)'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+    `).join('') : empty;
+
+    ['sb-favs', 'drawer-favs'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    });
+    const em = document.getElementById('sb-empty');
+    if (em) em.style.display = 'none';
+}
+
+function removeFav(id) {
+    let favs = getFavs().filter(f => f.id != id);
+    saveFavs(favs);
+    renderFavs();
+    if (activeId == id) updateLikeIcon(id);
+}
+
+// ── Mobile drawer ──────────────────────────────────────
+function openDrawer()  { document.getElementById('mobile-drawer').classList.add('open'); renderFavs(); }
+function closeDrawer() { document.getElementById('mobile-drawer').classList.remove('open'); }
+
+// ── Audio events ───────────────────────────────────────
+audio.addEventListener('pause',  () => { playing = false; setPpIcon(false); });
+audio.addEventListener('play',   () => { playing = true;  setPpIcon(true); });
+audio.addEventListener('error',  () => {
+    setTimeout(() => { if (activeId && playing) { audio.load(); audio.play(); } }, 2000);
+});
+
+// ── Init ───────────────────────────────────────────────
+renderFavs();
+
+// Hide eq indicators that are inline in quick cards by default
+document.querySelectorAll('[id^="qc-eq-"]').forEach(el => el.style.display = 'none');
+</script>
 </body>
-
 </html>

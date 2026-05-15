@@ -4,11 +4,10 @@ namespace App\Filament\Resources;
 
 use Filament\Forms;
 use Filament\Tables;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use App\Models\RadioChannel;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Radio;
 use Filament\Tables\Columns\TextColumn;
 use App\Tables\Columns\CustomImageColumn;
 use App\Filament\Resources\RadioChannelResource\Pages;
@@ -18,12 +17,12 @@ class RadioChannelResource extends Resource
 {
     protected static ?string $model = RadioChannel::class;
 
-    protected static ?string $navigationIcon = 'gmdi-folder-tt';
+    protected static \BackedEnum|string|null $navigationIcon = 'gmdi-folder-tt';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\FileUpload::make(RadioChannel::PHOTO)
                     ->directory('photos')
                     ->visibility('public')
