@@ -9,7 +9,6 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Session\Middleware\StartSession;
-use App\Filament\Resources\RadioChannelResource;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Routing\Middleware\SubstituteBindings;
@@ -54,8 +53,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])->resources([
-                RadioChannelResource::class,
             ]);
     }
 }
