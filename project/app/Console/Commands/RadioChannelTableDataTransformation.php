@@ -40,7 +40,7 @@ class RadioChannelTableDataTransformation extends Command
                 }
             }
 
-            $channel->photo = Storage::url($filename);
+            $channel->photo = $filename; // mutator adds /storage/ prefix
             $channel->title = $channel->title ?: $channel->alt;
             $channel->save();
 

@@ -3,7 +3,20 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FM Macedonia</title>
+
+    {{-- SEO: title, description, OG, Twitter Card, canonical, robots, favicon --}}
+    {!! seo(new \RalphJSmit\Laravel\SEO\Support\SEOData(
+        title: 'FM Macedonia — Stream Macedonian Radio Live',
+        description: 'Stream 33 Macedonian FM radio stations live in your browser. Pop, folk, rock, news and more.',
+        image: 'images/og-image.png',
+        url: url('/'),
+        site_name: 'FM Macedonia',
+        enableTitleSuffix: false,
+    )) !!}
+
+    {{-- PWA: manifest link, theme-color, apple meta, service-worker registration tag --}}
+    @PwaHead
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
@@ -23,8 +36,13 @@
             --muted: #A7A7A7;
             --dim: #535353;
             --player-h: 90px;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
         }
 
+        /* Base: percentage heights so overflow constraints propagate correctly */
         html, body {
             height: 100%;
             overflow: hidden;
@@ -32,6 +50,10 @@
             color: var(--text);
             font-family: 'Figtree', sans-serif;
             -webkit-font-smoothing: antialiased;
+        }
+        /* dvh enhancement for browsers that support it (fixes iOS address-bar jump) */
+        @supports (height: 100dvh) {
+            html, body { height: 100dvh; }
         }
 
         /* ── Scrollbar ── */
@@ -43,12 +65,20 @@
         /* ── Layout shell ── */
         #app {
             display: grid;
-            grid-template-rows: 1fr var(--player-h);
+            grid-template-rows: 1fr auto;
             grid-template-columns: 240px 1fr;
-            height: 100vh;
+            /* height: 100% inherits from html/body; dvh applied via @supports above */
+            height: 100%;
             gap: 8px;
             padding: 8px;
             padding-bottom: 0;
+            /* Respect notch/dynamic island */
+            padding-left: max(8px, var(--safe-left));
+            padding-right: max(8px, var(--safe-right));
+            padding-top: max(8px, var(--safe-top));
+        }
+        @supports (height: 100dvh) {
+            #app { height: 100dvh; }
         }
 
         @media (max-width: 1023px) {
@@ -65,6 +95,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-height: 0; /* required for grid overflow behaviour */
         }
 
         /* ── Main ── */
@@ -73,9 +104,16 @@
             grid-column: 2;
             background: var(--bg);
             border-radius: 10px;
-            overflow-y: auto;
+            /* scroll must be on the grid child itself, not a nested wrapper */
+            overflow-y: scroll;   /* 'scroll' not 'auto' — iOS requires this */
             overflow-x: hidden;
             position: relative;
+            min-height: 0;        /* lets grid row compress below content height */
+            /* Momentum scroll on iOS (still respected as enhancement) */
+            -webkit-overflow-scrolling: touch;
+            /* Tells the browser this element handles vertical panning */
+            touch-action: pan-y;
+            overscroll-behavior-y: contain;
         }
 
         @media (max-width: 1023px) {
@@ -92,6 +130,12 @@
             align-items: center;
             padding: 0 16px;
             gap: 16px;
+            /* Account for iPhone home indicator */
+            padding-bottom: max(8px, var(--safe-bottom));
+            min-height: var(--player-h);
+            /* Extra left/right safe area for landscape notch */
+            padding-left: max(16px, calc(var(--safe-left) + 8px));
+            padding-right: max(16px, calc(var(--safe-right) + 8px));
         }
 
         /* ── Top gradient header ── */
@@ -99,19 +143,26 @@
             position: sticky;
             top: 0;
             z-index: 20;
-            padding: 16px 24px;
+            padding: 14px 20px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            background: linear-gradient(to bottom, rgba(18,18,18,0.95) 60%, transparent);
-            backdrop-filter: blur(6px);
+            gap: 10px;
+            background: linear-gradient(to bottom, rgba(18,18,18,0.97) 70%, transparent);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
+        /* First child (hamburger+logo) stays left */
+        #main-header > div:first-child { flex-shrink: 0; }
+        /* Search trigger fills middle space */
+        .search-trigger { flex: 1; min-width: 0; }
+        /* Live badge stays right */
+        .live-badge { flex-shrink: 0; }
 
         /* ── Quick-picks (featured grid) ── */
         .quick-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
+            gap: 6px;
         }
         @media (min-width: 640px) { .quick-grid { grid-template-columns: repeat(3, 1fr); } }
 
@@ -124,60 +175,84 @@
             cursor: pointer;
             transition: background 0.15s;
             position: relative;
+            /* Prevent iOS tap highlight */
+            -webkit-tap-highlight-color: transparent;
         }
         .quick-card:hover { background: #3e3e3e; }
         .quick-card .qc-art {
-            width: 64px;
-            height: 64px;
+            width: 56px;
+            height: 56px;
             flex-shrink: 0;
+            overflow: hidden;
+            background: #fff;
         }
+        .quick-card .qc-art img {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            padding: 6%;
+        }
+        @media (min-width: 480px) { .quick-card .qc-art { width: 64px; height: 64px; } }
+
         .quick-card .qc-title {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 700;
             flex: 1;
-            padding: 0 12px;
+            min-width: 0; /* CRITICAL: allows text-overflow to work in flex */
+            padding: 0 8px;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
         }
+        @media (min-width: 480px) {
+            .quick-card .qc-title { font-size: 0.8rem; padding: 0 12px; }
+        }
+
+        /* Play button: absolute-positioned so it NEVER consumes layout space */
         .quick-card .qc-play {
-            width: 40px;
-            height: 40px;
+            position: absolute;
+            right: 8px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             background: var(--green);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 8px;
             opacity: 0;
-            transform: translateY(4px);
+            transform: translateY(4px) scale(0.85);
             transition: opacity 0.2s, transform 0.2s;
             flex-shrink: 0;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+            pointer-events: none; /* card itself handles click */
         }
-        .quick-card:hover .qc-play,
-        .quick-card.is-active .qc-play { opacity: 1; transform: translateY(0); }
+        /* Desktop hover & active */
+        @media (hover: hover) {
+            .quick-card:hover .qc-play { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .quick-card.is-active .qc-play { opacity: 1; transform: translateY(0) scale(1); }
         .quick-card.is-active { background: #1a2e1a; }
 
         /* ── Station cards ── */
         .station-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
+            gap: 12px;
         }
-        @media (min-width: 480px)  { .station-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (min-width: 768px)  { .station-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 480px)  { .station-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
+        @media (min-width: 768px)  { .station-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
         @media (min-width: 1280px) { .station-grid { grid-template-columns: repeat(5, 1fr); } }
         @media (min-width: 1536px) { .station-grid { grid-template-columns: repeat(6, 1fr); } }
 
         .station-card {
             background: var(--card);
             border-radius: 8px;
-            padding: 16px;
+            padding: 12px;
             cursor: pointer;
             transition: background 0.2s;
             animation: fadeUp 0.4s ease both;
+            -webkit-tap-highlight-color: transparent;
         }
+        @media (min-width: 480px) { .station-card { padding: 16px; } }
         .station-card:hover { background: var(--hover); }
         .station-card.is-active { background: #1f2e1f; box-shadow: 0 0 0 1px rgba(30,215,96,.25); }
 
@@ -186,30 +261,46 @@
             padding-bottom: 100%;
             border-radius: 6px;
             overflow: hidden;
-            margin-bottom: 14px;
-            box-shadow: 0 8px 24px rgba(0,0,0,.5);
+            margin-bottom: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.5);
         }
+        @media (min-width: 480px) { .card-art-wrap { margin-bottom: 14px; } }
         .card-art-inner { position: absolute; inset: 0; }
-        .card-art-inner img, .card-art-inner .placeholder {
-            width: 100%; height: 100%; object-fit: cover;
+        .card-art-inner img {
+            width: 100%; height: 100%;
+            object-fit: contain;   /* show full logo, no cropping */
+            background: #fff;      /* white pad matches most radio logos */
+            padding: 8%;           /* breathing room around the logo */
+        }
+        .card-art-inner .placeholder {
+            width: 100%; height: 100%;
         }
         .card-play-btn {
             position: absolute;
-            bottom: 8px;
-            right: 8px;
-            width: 40px;
-            height: 40px;
+            bottom: 6px;
+            right: 6px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             background: var(--green);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,.5);
-            opacity: 0;
-            transform: translateY(8px);
+            box-shadow: 0 4px 16px rgba(0,0,0,.6);
             transition: opacity 0.2s, transform 0.2s;
+            /* Touch: always visible at reduced opacity; desktop: hover-only */
+            opacity: 0;
+            transform: translateY(6px);
         }
-        .station-card:hover .card-play-btn,
+        /* Desktop: reveal on hover */
+        @media (hover: hover) {
+            .station-card:hover .card-play-btn { opacity: 1; transform: translateY(0); }
+        }
+        /* Touch: always show at low opacity so users know the card is tappable */
+        @media (hover: none) {
+            .card-play-btn { opacity: 0.35; transform: translateY(0); }
+            .station-card:active .card-play-btn { opacity: 1; }
+        }
         .station-card.is-active .card-play-btn { opacity: 1; transform: translateY(0); }
 
         /* ── Equalizer ── */
@@ -251,45 +342,61 @@
         @keyframes spin { to{transform:rotate(360deg)} }
 
         /* ── Player ── */
-        #player-left { display: flex; align-items: center; gap: 12px; flex: 0 0 30%; min-width: 0; }
-        #player-center { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
-        #player-right { display: flex; align-items: center; gap: 10px; flex: 0 0 30%; justify-content: flex-end; }
-        @media (max-width: 639px) { #player-right { display: none; } #player-left { flex: 1; } #player-center { flex: 0; } }
+        #player-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+        #player-center { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+        #player-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+        @media (max-width: 479px) {
+            #player-left  { gap: 8px; }
+            #player-right { display: none; }
+        }
+        @media (min-width: 480px) and (max-width: 767px) {
+            /* Mid-size: show volume but not prev/next on center */
+            #player-right { display: flex; }
+        }
 
         #player-art-box {
-            width: 56px; height: 56px; border-radius: 4px;
-            overflow: hidden; flex-shrink: 0; background: var(--hover);
-            display: none;
+            width: 48px; height: 48px; border-radius: 4px;
+            overflow: hidden; flex-shrink: 0; background: #fff;
         }
-        @media (min-width: 480px) { #player-art-box { display: block; } }
+        #player-art-box img { width: 100%; height: 100%; object-fit: contain; padding: 5%; }
+        @media (min-width: 480px) { #player-art-box { width: 56px; height: 56px; } }
 
         .ctrl-btn {
             background: none; border: none; cursor: pointer;
             color: var(--muted); transition: color 0.15s;
             display: flex; align-items: center; justify-content: center;
+            padding: 4px;
+            -webkit-tap-highlight-color: transparent;
         }
         .ctrl-btn:hover { color: var(--text); }
+        .ctrl-btn:active { color: var(--text); }
+
+        /* Hide skip buttons on very small screens */
+        @media (max-width: 479px) {
+            .skip-btn { display: none; }
+        }
 
         #pp-btn {
-            width: 36px; height: 36px; border-radius: 50%;
+            width: 38px; height: 38px; border-radius: 50%;
             background: var(--text); border: none; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0; transition: transform 0.15s;
+            -webkit-tap-highlight-color: transparent;
         }
         #pp-btn:hover { transform: scale(1.07); }
-        #pp-btn:active { transform: scale(0.96); }
+        #pp-btn:active { transform: scale(0.92); }
 
         #vol-slider {
             -webkit-appearance: none; appearance: none;
-            width: 76px; height: 4px; border-radius: 2px;
+            width: 70px; height: 4px; border-radius: 2px;
             background: var(--dim); outline: none; cursor: pointer;
         }
         #vol-slider::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 12px; height: 12px;
+            -webkit-appearance: none; width: 14px; height: 14px;
             border-radius: 50%; background: var(--text);
-            opacity: 0; transition: opacity .15s;
+            cursor: pointer;
         }
-        #vol-slider:hover::-webkit-slider-thumb { opacity: 1; }
 
         /* ── Sidebar styles ── */
         .sb-nav-item {
@@ -312,29 +419,135 @@
         .live-badge {
             display: inline-flex; align-items: center; gap: 5px;
             background: rgba(30,215,96,.12); border: 1px solid rgba(30,215,96,.3);
-            border-radius: 20px; padding: 3px 10px;
-            font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+            border-radius: 20px; padding: 4px 10px;
+            font-size: .68rem; font-weight: 700; letter-spacing: .05em;
             color: var(--green); text-transform: uppercase;
+            white-space: nowrap;
         }
-        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: livePulse 1.5s ease-in-out infinite; }
+        .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: livePulse 1.5s ease-in-out infinite; flex-shrink: 0; }
+        /* Hide "· 33 STATIONS" text on very small screens, keep just "LIVE" */
+        @media (max-width: 399px) { .live-count { display: none; } }
+
+        /* ── Search trigger — responsive ── */
+        .search-trigger {
+            display: flex; align-items: center; gap: 7px;
+            background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
+            padding: 8px 12px; cursor: pointer; transition: border-color .15s, background .15s;
+            color: var(--muted); font-family: 'Figtree', sans-serif; font-size: .8rem;
+            overflow: hidden; min-width: 36px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .search-trigger:hover { border-color: #555; background: #222; color: var(--text); }
+        .search-trigger:active { background: #2a2a2a; }
+        /* Hide text + kbd hint on small screens — icon only */
+        @media (max-width: 479px) {
+            .st-text { display: none; }
+            .st-kbd  { display: none; }
+            .search-trigger { padding: 8px; justify-content: center; flex: 0; }
+        }
+        @media (min-width: 480px) and (max-width: 639px) {
+            .st-kbd { display: none; }
+        }
 
         /* ── Mobile sidebar drawer ── */
         #mobile-drawer {
-            position: fixed; inset: 0; z-index: 100;
+            position: fixed; inset: 0; z-index: 200;
             display: none;
         }
         #mobile-drawer.open { display: block; }
-        .drawer-bg { position: absolute; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(3px); }
+        .drawer-bg { position: absolute; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
         .drawer-panel {
-            position: absolute; left: 0; top: 0; bottom: 0; width: 280px;
+            position: absolute; left: 0; top: 0; bottom: 0; width: min(280px, 85vw);
             background: #111; padding: 20px 16px; overflow-y: auto;
             transform: translateX(-100%); transition: transform .25s ease;
+            padding-top: max(20px, var(--safe-top));
+            padding-bottom: max(20px, var(--safe-bottom));
+            padding-left: max(16px, var(--safe-left));
         }
         #mobile-drawer.open .drawer-panel { transform: translateX(0); }
 
         /* ── Vinyl spin for now-playing art ── */
         @keyframes vinyl { to { transform: rotate(360deg); } }
         #player-art-box.spinning { animation: vinyl 4s linear infinite; }
+
+        /* Package floating button disabled via config — no override needed */
+
+        /* ── Search modal ── */
+        #search-overlay {
+            position: fixed; inset: 0; z-index: 300;
+            background: rgba(0,0,0,.75);
+            backdrop-filter: blur(6px);
+            display: none; align-items: flex-start; justify-content: center;
+            padding-top: clamp(40px, 10vh, 120px);
+        }
+        #search-overlay.open { display: flex; }
+
+        #search-box {
+            width: 100%; max-width: 600px; margin: 0 16px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0,0,0,.8);
+            animation: searchIn .18s ease;
+        }
+        @keyframes searchIn { from{opacity:0;transform:scale(.96) translateY(-8px)} to{opacity:1;transform:scale(1) translateY(0)} }
+
+        #search-input-wrap {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        #search-input {
+            flex: 1; background: none; border: none; outline: none;
+            font-family: 'Figtree', sans-serif;
+            font-size: 1.05rem; color: var(--text);
+        }
+        #search-input::placeholder { color: var(--dim); }
+
+        #search-kbd {
+            font-size: .68rem; color: var(--dim);
+            background: #2a2a2a; border: 1px solid #3a3a3a;
+            border-radius: 5px; padding: 2px 7px; white-space: nowrap;
+        }
+
+        #search-results {
+            max-height: 400px; overflow-y: auto;
+        }
+        .sr-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 10px 20px; cursor: pointer;
+            transition: background .12s;
+            border-bottom: 1px solid rgba(255,255,255,.04);
+        }
+        .sr-item:last-child { border-bottom: none; }
+        .sr-item:hover, .sr-item.sr-focused { background: #282828; }
+        .sr-item.sr-focused .sr-play { opacity: 1; }
+        .sr-art {
+            width: 44px; height: 44px; border-radius: 6px;
+            overflow: hidden; flex-shrink: 0; background: var(--hover);
+        }
+        .sr-art img { width: 100%; height: 100%; object-fit: cover; }
+        .sr-art .sr-placeholder {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1.1rem; color: rgba(255,255,255,.7);
+        }
+        .sr-info { flex: 1; min-width: 0; }
+        .sr-name { font-size: .875rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sr-genre { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+        .sr-play {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--green); display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; opacity: 0; transition: opacity .15s;
+        }
+        #search-empty {
+            padding: 32px 20px; text-align: center;
+            color: var(--muted); font-size: .875rem; display: none;
+        }
+
+        /* .search-trigger defined above in main CSS block */
+
     </style>
 </head>
 <body>
@@ -345,13 +558,8 @@
     {{-- ─── SIDEBAR ─────────────────────────────── --}}
     <aside id="sidebar">
         {{-- Logo --}}
-        <div style="padding: 20px 16px 8px;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1ED760" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>
-                </svg>
-                <span style="font-family:'Outfit',sans-serif; font-size:1.1rem; font-weight:800; letter-spacing:-.01em;">FM Macedonia</span>
-            </div>
+        <div style="padding: 18px 16px 8px;">
+            <img src="/images/logo.svg" alt="FM Macedonia" style="height:36px; width:auto;">
         </div>
 
         {{-- Nav --}}
@@ -392,20 +600,27 @@
         <div id="main-header">
             {{-- Mobile: hamburger + logo --}}
             <div style="display:flex; align-items:center; gap:12px;">
-                <button id="menu-btn" onclick="openDrawer()" style="display:none; background:none; border:none; cursor:pointer; color:white; padding:4px;" class="lg-hide">
+                <button id="menu-btn" onclick="openDrawer()" style="display:none; background:none; border:none; cursor:pointer; color:white; padding:4px;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
-                <span id="mobile-title" style="display:none; font-family:'Outfit',sans-serif; font-weight:800; font-size:.95rem;">FM Macedonia</span>
+                <img id="mobile-title" src="/images/logo-icon.svg" alt="FM" style="display:none; height:28px; width:28px;">
             </div>
+
+            {{-- Search trigger: icon-only on mobile, full text on larger screens --}}
+            <button class="search-trigger" onclick="openSearch()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span class="st-text">Search stations</span>
+                <span class="st-kbd" style="font-size:.63rem; color:var(--dim); background:#2a2a2a; border:1px solid #3a3a3a; border-radius:4px; padding:1px 6px; white-space:nowrap;">⌘K</span>
+            </button>
 
             <div class="live-badge">
                 <span class="live-dot"></span>
-                Live · {{ $stations->count() }} stations
+                Live<span class="live-count"> · {{ $stations->count() }}</span>
             </div>
         </div>
 
         {{-- Page content --}}
-        <div style="padding: 0 24px 32px;">
+        <div style="padding: 0 clamp(12px, 4vw, 24px) 32px;">
 
             {{-- Greeting --}}
             <div style="margin-bottom:24px;">
@@ -532,7 +747,7 @@
         {{-- Center: controls + live --}}
         <div id="player-center">
             <div style="display:flex; align-items:center; gap:20px;">
-                <button class="ctrl-btn" onclick="prevStation()" title="Previous">
+                <button class="ctrl-btn skip-btn" onclick="prevStation()" title="Previous">
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
                 </button>
                 <button id="pp-btn" onclick="togglePlay()">
@@ -540,7 +755,7 @@
                         <polygon points="5 3 19 12 5 21 5 3"/>
                     </svg>
                 </button>
-                <button class="ctrl-btn" onclick="nextStation()" title="Next">
+                <button class="ctrl-btn skip-btn" onclick="nextStation()" title="Next">
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
                 </button>
             </div>
@@ -573,6 +788,19 @@
         <div id="drawer-favs">
             <p style="color:var(--dim); font-size:.8rem;">Stations you like will appear here</p>
         </div>
+    </div>
+</div>
+
+{{-- ─── SEARCH MODAL ────────────────────────────── --}}
+<div id="search-overlay" onclick="closeSearchOnOverlay(event)">
+    <div id="search-box">
+        <div id="search-input-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A7A7" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="search-input" type="text" placeholder="Search stations, genres…" autocomplete="off" oninput="filterSearch(this.value)" onkeydown="searchKeyNav(event)">
+            <span id="search-kbd" onclick="closeSearch()">esc</span>
+        </div>
+        <div id="search-results"></div>
+        <div id="search-empty">No stations found</div>
     </div>
 </div>
 
@@ -665,7 +893,7 @@ function activateUI(s) {
     box.style.display = 'block';
     const inner = document.getElementById('player-art-inner');
     if (s.photo) {
-        inner.innerHTML = `<img src="${s.photo}" alt="${s.title}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;background:#333;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;\\'>${s.title[0]?.toUpperCase()}</div>'">`;
+        inner.innerHTML = `<img src="${s.photo}" alt="${s.title}" style="width:100%;height:100%;object-fit:contain;padding:6%;background:#fff;" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;background:#333;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;\\'>${s.title[0]?.toUpperCase()}</div>'">`;
     } else {
         const h = Math.abs(s.title.split('').reduce((a,c)=>a+c.charCodeAt(0),0)) % 360;
         inner.innerHTML = `<div style="width:100%;height:100%;background:linear-gradient(135deg,hsl(${h},55%,28%),hsl(${(h+45)%360},60%,18%));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:rgba(255,255,255,.85);">${s.title[0]?.toUpperCase()}</div>`;
@@ -831,9 +1059,139 @@ audio.addEventListener('error',  () => {
 
 // ── Init ───────────────────────────────────────────────
 renderFavs();
-
-// Hide eq indicators that are inline in quick cards by default
 document.querySelectorAll('[id^="qc-eq-"]').forEach(el => el.style.display = 'none');
+
+// ── localStorage migration: fix stale /storage/storage/ paths ─
+(function migrateFavPaths() {
+    const favs = getFavs();
+    const fixed = favs.map(f => ({
+        ...f,
+        photo: f.photo ? f.photo.replace('/storage/storage/', '/storage/') : f.photo
+    }));
+    saveFavs(fixed);
+})();
+
+// ── Keyboard shortcuts ─────────────────────────────────
+document.addEventListener('keydown', e => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }
+    if (e.key === 'Escape')   { closeSearch(); return; }
+    if (e.key === ' ')        { e.preventDefault(); togglePlay(); return; }
+    if (e.key === 'ArrowRight') nextStation();
+    if (e.key === 'ArrowLeft')  prevStation();
+    if (e.key === 'm' || e.key === 'M') toggleMute();
+});
+
+// ── Search ─────────────────────────────────────────────
+let searchFocusIdx = -1;
+
+function openSearch() {
+    document.getElementById('search-overlay').classList.add('open');
+    document.getElementById('search-input').value = '';
+    searchFocusIdx = -1;
+    filterSearch('');
+    setTimeout(() => document.getElementById('search-input').focus(), 50);
+}
+
+function closeSearch() {
+    document.getElementById('search-overlay').classList.remove('open');
+}
+
+function closeSearchOnOverlay(e) {
+    if (e.target === document.getElementById('search-overlay')) closeSearch();
+}
+
+function filterSearch(q) {
+    const term = q.trim().toLowerCase();
+    const list = term
+        ? stations.filter(s =>
+            (s.title || '').toLowerCase().includes(term) ||
+            (s.subtitle || '').toLowerCase().includes(term))
+        : stations;
+
+    searchFocusIdx = -1;
+    renderSearchResults(list);
+}
+
+function renderSearchResults(list) {
+    const container = document.getElementById('search-results');
+    const empty = document.getElementById('search-empty');
+
+    if (!list.length) {
+        container.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+
+    container.innerHTML = list.map((s, i) => {
+        const h = Math.abs((s.title||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)) % 360;
+        const art = s.photo
+            ? `<img src="${s.photo}" alt="${s.title}" onerror="this.outerHTML='<div class=\\'sr-placeholder\\' style=\\'background:linear-gradient(135deg,hsl(${h},50%,25%),hsl(${(h+40)%360},55%,18%));\\'>'+encodeURIComponent(s.title[0]||'?')+'</div>'">`
+            : `<div class="sr-placeholder" style="background:linear-gradient(135deg,hsl(${h},50%,25%),hsl(${(h+40)%360},55%,18%));">${(s.title||'?')[0].toUpperCase()}</div>`;
+
+        const genres = (s.subtitle || '').split(' ').filter(Boolean)
+            .map(g => `<span style="background:#2a2a2a;border-radius:3px;padding:1px 6px;font-size:.65rem;">${g}</span>`)
+            .join('');
+
+        const isActive = s.id == activeId;
+        return `<div class="sr-item${isActive?' sr-focused':''}" data-idx="${i}" data-id="${s.id}"
+                     onclick="searchPlay(${s.id})"
+                     onmouseenter="searchHover(${i})">
+            <div class="sr-art">${art}</div>
+            <div class="sr-info">
+                <div class="sr-name" style="color:${isActive?'var(--green)':'var(--text)'};">${s.title}</div>
+                <div class="sr-genre" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${genres}</div>
+            </div>
+            <div class="sr-play">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="black" style="margin-left:1px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function searchHover(idx) { searchFocusIdx = idx; highlightSearchItem(); }
+
+function highlightSearchItem() {
+    document.querySelectorAll('.sr-item').forEach((el, i) => {
+        el.classList.toggle('sr-focused', i === searchFocusIdx);
+    });
+    const active = document.querySelector('.sr-item.sr-focused');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function searchKeyNav(e) {
+    const items = document.querySelectorAll('.sr-item');
+    if (!items.length) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        searchFocusIdx = Math.min(searchFocusIdx + 1, items.length - 1);
+        highlightSearchItem();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        searchFocusIdx = Math.max(searchFocusIdx - 1, 0);
+        highlightSearchItem();
+    } else if (e.key === 'Enter') {
+        if (searchFocusIdx >= 0 && items[searchFocusIdx]) {
+            const id = items[searchFocusIdx].dataset.id;
+            searchPlay(id);
+        }
+    } else if (e.key === 'Escape') {
+        closeSearch();
+    }
+}
+
+function searchPlay(id) {
+    play(id);
+    closeSearch();
+}
+
 </script>
+
+{{-- PWA service worker registration (erag/laravel-pwa) --}}
+@RegisterServiceWorkerScript
 </body>
 </html>

@@ -1,19 +1,133 @@
-on: 
+name: 🚀 Deploy to cPanel
+
+on:
   push:
-    branches:
-      - main
-name: 🚀 Deploy website to cPanel
+    branches: [main]
+  workflow_dispatch:
+
+# ── Required GitHub Secrets ────────────────────────────────────
+# Set in: repo → Settings → Secrets and variables → Actions → New secret
+#
+#   FTP_SERVER        cPanel FTP hostname        e.g. fm.nankov.mk
+#   FTP_USERNAME      cPanel FTP user            e.g. fmnankov
+#   FTP_PASSWORD      cPanel FTP password
+#   FTP_SERVER_DIR    Target path on server      e.g. /public_html/
+#                     (the directory where Laravel lives on cPanel)
+#
+#   DEPLOY_SECRET     Random token for deploy.php hook
+#                     Generate with: openssl rand -hex 32
+#                     Must also be added to .env on the server:
+#                     DEPLOY_SECRET=<same value>
+#
+#   APP_URL           Public URL of the app      e.g. https://fm.nankov.mk
+# ──────────────────────────────────────────────────────────────
+
 jobs:
-  web-deploy:
-    name: 🎉 Deploy
+  deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
+
     steps:
-    - name: 🚚 Get latest code
-      uses: actions/checkout@v2
-    
-    - name: 📂 Sync files
-      uses: SamKirkland/FTP-Deploy-Action@4.3.0
-      with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
+      # ── 1. Checkout ──────────────────────────────────────────
+      - name: 🚚 Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. PHP ───────────────────────────────────────────────
+      - name: 🐘 Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, pdo_sqlite, mbstring, xml, zip, bcmath
+          coverage: none
+
+      # ── 3. Node ──────────────────────────────────────────────
+      - name: 🟢 Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: project/package-lock.json
+
+      # ── 4. Composer ──────────────────────────────────────────
+      - name: 📦 Composer install (no-dev)
+        working-directory: project
+        run: |
+          composer install \
+            --no-dev \
+            --optimize-autoloader \
+            --no-interaction \
+            --prefer-dist
+
+      # ── 5. Frontend build ─────────────────────────────────────
+      - name: 🏗️ npm build
+        working-directory: project
+        run: |
+          npm ci --prefer-offline --no-fund
+          npm run build
+
+      # ── 6. PWA icons ─────────────────────────────────────────
+      - name: 🖼️ Generate PWA icons (if missing)
+        working-directory: project
+        run: |
+          if [ ! -f public/images/pwa/icon-512.png ]; then
+            sudo apt-get install -y -q imagemagick
+            mkdir -p public/images/pwa
+            for size in 72 96 128 144 152 192 384 512; do
+              convert -background "#121212" -density 300 \
+                public/images/logo-icon.svg \
+                -resize ${size}x${size} \
+                public/images/pwa/icon-${size}.png
+            done
+            cp public/images/pwa/icon-192.png public/apple-touch-icon.png
+            cp public/images/pwa/icon-192.png public/favicon.png
+            echo "Icons generated"
+          else
+            echo "Icons already committed — skipping"
+          fi
+
+      # ── 7. FTP deploy ─────────────────────────────────────────
+      - name: 📂 FTP deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server:      ${{ secrets.FTP_SERVER }}
+          username:    ${{ secrets.FTP_USERNAME }}
+          password:    ${{ secrets.FTP_PASSWORD }}
+          local-dir:   ./project/
+          server-dir:  ${{ secrets.FTP_SERVER_DIR }}
+          exclude: |
+            **/.git*
+            **/.env*
+            **/node_modules/**
+            **/storage/app/private/**
+            **/storage/logs/**
+            **/database/database.sqlite
+            **/tests/**
+            **/.claude/**
+            **/setup-prod.sh
+            **/composer.lock
+
+      # ── 8. Post-deploy hook ───────────────────────────────────
+      # Calls deploy.php on the server to run migrate, optimize, etc.
+      # The token must match DEPLOY_SECRET in the server's .env
+      - name: 🔧 Run post-deploy hook
+        run: |
+          RESPONSE=$(curl -s -o /tmp/deploy_output.txt -w "%{http_code}" \
+            "${{ secrets.APP_URL }}/deploy.php?token=${{ secrets.DEPLOY_SECRET }}")
+
+          echo "── Server response (HTTP $RESPONSE):"
+          cat /tmp/deploy_output.txt
+          echo ""
+
+          if [ "$RESPONSE" != "200" ]; then
+            echo "::error::Post-deploy hook failed with HTTP $RESPONSE"
+            exit 1
+          fi
+
+      # ── 9. Summary ────────────────────────────────────────────
+      - name: ✅ Summary
+        if: always()
+        run: |
+          echo "### Deployment to cPanel 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

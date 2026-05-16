@@ -49,7 +49,12 @@ class RadioChannel extends Model
     public function setPhotoAttribute($value)
     {
         if (!empty($value)) {
-            $this->attributes[self::PHOTO] = '/storage/' . ltrim($value, '/');
+            // Never double-prefix: if already absolute, store as-is
+            if (str_starts_with($value, '/storage/') || str_starts_with($value, 'http')) {
+                $this->attributes[self::PHOTO] = $value;
+            } else {
+                $this->attributes[self::PHOTO] = '/storage/' . ltrim($value, '/');
+            }
         }
     }
 }

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" fill="none">
+  <!-- Icon mark -->
+  <g transform="translate(4, 4)">
+    <!-- Outer arc -->
+    <path d="M4 26 Q26 4 48 26" stroke="#1ED760" stroke-width="4.5" stroke-linecap="round" opacity="0.35"/>
+    <!-- Mid arc -->
+    <path d="M10 26 Q26 10 42 26" stroke="#1ED760" stroke-width="4.5" stroke-linecap="round" opacity="0.65"/>
+    <!-- Inner arc -->
+    <path d="M16 26 Q26 16 36 26" stroke="#1ED760" stroke-width="4.5" stroke-linecap="round"/>
+    <!-- Mast -->
+    <line x1="26" y1="26" x2="26" y2="42" stroke="#1ED760" stroke-width="4" stroke-linecap="round"/>
+    <!-- Base beam -->
+    <line x1="16" y1="42" x2="36" y2="42" stroke="#1ED760" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Legs -->
+    <line x1="18" y1="42" x2="12" y2="52" stroke="#1ED760" stroke-width="3" stroke-linecap="round"/>
+    <line x1="34" y1="42" x2="40" y2="52" stroke="#1ED760" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="68" y="38"
+        font-family="'Outfit', 'DM Sans', system-ui, sans-serif"
+        font-weight="800"
+        font-size="26"
+        letter-spacing="-0.5"
+        fill="#FFFFFF">FM</text>
+  <text x="106" y="38"
+        font-family="'Outfit', 'DM Sans', system-ui, sans-serif"
+        font-weight="600"
+        font-size="22"
+        letter-spacing="0"
+        fill="#A7A7A7"> Macedonia</text>
+</svg>

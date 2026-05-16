@@ -9,11 +9,13 @@
         "php": "^8.3",
         "blade-ui-kit/blade-heroicons": "^2.6",
         "codeat3/blade-google-material-design-icons": "^1.20",
+        "erag/laravel-pwa": "^2.1",
         "filament/filament": "^4.0",
         "filament/tables": "^4.0",
         "hugomyb/filament-media-action": "^4.0",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
+        "ralphjsmit/laravel-seo": "^1.8",
         "roach-php/core": "^3.2"
     },
     "require-dev": {
