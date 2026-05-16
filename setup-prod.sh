@@ -106,6 +106,7 @@ composer install \
   --optimize-autoloader \
   --no-interaction \
   --prefer-dist \
+  --ignore-platform-reqs \
   2>&1 | grep -E "^(- Installing|- Updating|Generating|Nothing to install)" || true
 
 ok "Composer install complete"
