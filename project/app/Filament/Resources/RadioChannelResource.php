@@ -14,7 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use App\Tables\Columns\CustomImageColumn;
 use App\Filament\Resources\RadioChannelResource\Pages;
-use Hugomyb\FilamentMediaAction\Tables\Actions\MediaAction;
+use Hugomyb\FilamentMediaAction\Actions\MediaAction;
 
 class RadioChannelResource extends Resource
 {
