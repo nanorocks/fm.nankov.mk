@@ -17,7 +17,7 @@ class RadioChannelResource extends Resource
 {
     protected static ?string $model = RadioChannel::class;
 
-    protected static \BackedEnum|string|null $navigationIcon = 'gmdi-folder-tt';
+    protected static ?string $navigationIcon = 'gmdi-folder-tt';
 
     public static function form(Schema $schema): Schema
     {
