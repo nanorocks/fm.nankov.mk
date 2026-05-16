@@ -7,6 +7,9 @@ use Filament\Tables;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use App\Models\RadioChannel;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use App\Tables\Columns\CustomImageColumn;
@@ -63,7 +66,7 @@ class RadioChannelResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
                 MediaAction::make('audio')
                     ->media(fn($record) => $record->audio_url)
                     ->label('Play')
@@ -72,27 +75,21 @@ class RadioChannelResource extends Resource
                     ->preload(false),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-                Tables\Actions\BulkAction::make('publish')
+                DeleteBulkAction::make(),
+                BulkAction::make('publish')
                     ->label('Set as Published')
                     ->icon('heroicon-o-check-circle')
                     ->action(function ($records) {
-                        // Extract IDs from the collection
                         $recordIds = $records->pluck('id')->toArray();
-
-                        // Update the published field for the selected records
                         RadioChannel::whereIn('id', $recordIds)->update(['published' => true]);
                     })
                     ->requiresConfirmation()
                     ->color('success'),
-                Tables\Actions\BulkAction::make('unpublish')
+                BulkAction::make('unpublish')
                     ->label('Set as Unpublished')
                     ->icon('heroicon-o-x-circle')
                     ->action(function ($records) {
-                        // Extract IDs from the collection
                         $recordIds = $records->pluck('id')->toArray();
-
-                        // Update the published field for the selected records
                         RadioChannel::whereIn('id', $recordIds)->update(['published' => false]);
                     })
                     ->requiresConfirmation()
