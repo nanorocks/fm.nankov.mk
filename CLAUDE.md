@@ -56,6 +56,13 @@ php artisan app:radio-importer --countrycode=MK          # all Macedonian statio
 php artisan app:radio-importer --countrycode=RS          # all Serbian stations
 ```
 
+**Stream playability check (toggles `published` based on whether the URL responds):**
+```bash
+php artisan app:radio-channels-check-playable                 # probe all + unpublish broken
+php artisan app:radio-channels-check-playable --dry-run       # report only
+php artisan app:radio-channels-check-playable --only-unpublished  # re-test dead streams
+```
+
 **First-time production setup:**
 ```bash
 php artisan make:filament-user   # create admin account

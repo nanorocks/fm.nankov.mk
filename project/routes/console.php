@@ -14,3 +14,5 @@ Schedule::command('app:radio-web-scraper')->monthly();
 Schedule::command('app:radio-channel-table-data-transformation')->monthly();
 
 Schedule::command('app:radio-importer --name=naxi')->monthly();
+
+Schedule::command('app:radio-channels-check-playable')->monthly();
