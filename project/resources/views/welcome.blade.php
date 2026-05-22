@@ -184,12 +184,12 @@
             height: 56px;
             flex-shrink: 0;
             overflow: hidden;
-            background: #fff;
+            background: linear-gradient(160deg, #1f1f1f 0%, #0d0d0d 100%);
         }
         .quick-card .qc-art img {
             width: 100%; height: 100%;
             object-fit: contain;
-            padding: 6%;
+            padding: 8%;
         }
         @media (min-width: 480px) { .quick-card .qc-art { width: 64px; height: 64px; } }
 
@@ -235,45 +235,91 @@
         /* ── Station cards ── */
         .station-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 12px;
         }
-        @media (min-width: 480px)  { .station-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
-        @media (min-width: 768px)  { .station-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
-        @media (min-width: 1280px) { .station-grid { grid-template-columns: repeat(5, 1fr); } }
-        @media (min-width: 1536px) { .station-grid { grid-template-columns: repeat(6, 1fr); } }
+        @media (min-width: 480px)  { .station-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
+        @media (min-width: 768px)  { .station-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
+        @media (min-width: 1280px) { .station-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+        @media (min-width: 1536px) { .station-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
         .station-card {
             background: var(--card);
             border-radius: 8px;
             padding: 12px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s, transform 0.15s;
             animation: fadeUp 0.4s ease both;
             -webkit-tap-highlight-color: transparent;
+            display: flex;
+            flex-direction: column;
+            min-width: 0; /* allow grid cell to shrink, prevents overflow */
         }
         @media (min-width: 480px) { .station-card { padding: 16px; } }
         .station-card:hover { background: var(--hover); }
+        @media (hover: hover) {
+            .station-card:hover { transform: translateY(-2px); }
+        }
         .station-card.is-active { background: #1f2e1f; box-shadow: 0 0 0 1px rgba(30,215,96,.25); }
 
         .card-art-wrap {
             position: relative;
-            padding-bottom: 100%;
+            padding-bottom: 100%; /* enforce 1:1 aspect ratio */
             border-radius: 6px;
             overflow: hidden;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 16px rgba(0,0,0,.5);
+            margin-bottom: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.5);
+            background: #0e0e0e;
         }
-        @media (min-width: 480px) { .card-art-wrap { margin-bottom: 14px; } }
-        .card-art-inner { position: absolute; inset: 0; }
+        .card-art-inner {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(120% 90% at 30% 20%, rgba(255,255,255,.06), transparent 60%),
+                linear-gradient(160deg, #1f1f1f 0%, #0d0d0d 100%);
+        }
         .card-art-inner img {
-            width: 100%; height: 100%;
-            object-fit: contain;   /* show full logo, no cropping */
-            background: #fff;      /* white pad matches most radio logos */
-            padding: 8%;           /* breathing room around the logo */
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 12%;
         }
         .card-art-inner .placeholder {
-            width: 100%; height: 100%;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Card text rows: fixed heights so every card aligns ── */
+        .card-title {
+            font-weight: 600;
+            font-size: .875rem;
+            line-height: 1.25rem;
+            color: var(--text);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 2.5rem; /* always reserves 2 lines */
+        }
+        .card-meta {
+            color: var(--muted);
+            font-size: .75rem;
+            line-height: 1rem;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 1rem;
+        }
+        .card-meta-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
         }
         .card-play-btn {
             position: absolute;
@@ -357,9 +403,10 @@
 
         #player-art-box {
             width: 48px; height: 48px; border-radius: 4px;
-            overflow: hidden; flex-shrink: 0; background: #fff;
+            overflow: hidden; flex-shrink: 0;
+            background: linear-gradient(160deg, #1f1f1f 0%, #0d0d0d 100%);
         }
-        #player-art-box img { width: 100%; height: 100%; object-fit: contain; padding: 5%; }
+        #player-art-box img { width: 100%; height: 100%; object-fit: contain; padding: 8%; }
         @media (min-width: 480px) { #player-art-box { width: 56px; height: 56px; } }
 
         .ctrl-btn {
@@ -681,6 +728,8 @@
                     $h1 = abs(crc32($s->title)) % 360;
                     $h2 = ($h1 + 45) % 360;
                     $gradient = "linear-gradient(135deg,hsl({$h1},55%,28%),hsl({$h2},60%,18%))";
+                    // Trim subtitle: drop "MP3 128kbps" / "AAC+ 64kbps" segments — keep country + tags
+                    $subtitle = trim(preg_replace('/\s*·?\s*[A-Z][A-Z0-9+]+\s*\d+kbps/i', '', (string) ($s->subtitle ?? ''))) ?: 'FM Radio · Live';
                 @endphp
                 <div
                     class="station-card"
@@ -692,9 +741,9 @@
                     <div class="card-art-wrap">
                         <div class="card-art-inner">
                             @if($s->photo)
-                                <img src="{{ $s->photo }}" alt="{{ $s->title }}" onerror="this.outerHTML='<div class=\'placeholder\' style=\'width:100%;height:100%;background:{{ $gradient }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2rem;color:rgba(255,255,255,.85);\'>{{ strtoupper(substr($s->title,0,1)) }}</div>'">
+                                <img src="{{ $s->photo }}" alt="{{ $s->title }}" loading="lazy" onerror="this.outerHTML='<div class=\'placeholder\' style=\'width:100%;height:100%;background:{{ $gradient }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2rem;color:rgba(255,255,255,.85);\'>{{ strtoupper(substr($s->title,0,1)) }}</div>'">
                             @else
-                                <div style="width:100%;height:100%;background:{{ $gradient }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2rem;color:rgba(255,255,255,.85);">{{ strtoupper(substr($s->title,0,1)) }}</div>
+                                <div class="placeholder" style="background:{{ $gradient }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2rem;color:rgba(255,255,255,.85);">{{ strtoupper(substr($s->title,0,1)) }}</div>
                             @endif
 
                             {{-- EQ overlay --}}
@@ -713,12 +762,12 @@
                         </div>
                     </div>
 
-                    <div style="font-weight:600; font-size:.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px;">{{ $s->title }}</div>
-                    <div style="color:var(--muted); font-size:.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px;">
+                    <div class="card-title" title="{{ $s->title }}">{{ $s->title }}</div>
+                    <div class="card-meta">
                         <div class="eq" id="sc-mini-eq-{{ $s->id }}" style="height:14px;">
                             <span></span><span></span><span></span>
                         </div>
-                        {{ $s->subtitle ?: 'FM Radio · Live' }}
+                        <span class="card-meta-text">{{ $subtitle }}</span>
                     </div>
                 </div>
                 @endforeach
@@ -893,7 +942,7 @@ function activateUI(s) {
     box.style.display = 'block';
     const inner = document.getElementById('player-art-inner');
     if (s.photo) {
-        inner.innerHTML = `<img src="${s.photo}" alt="${s.title}" style="width:100%;height:100%;object-fit:contain;padding:6%;background:#fff;" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;background:#333;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;\\'>${s.title[0]?.toUpperCase()}</div>'">`;
+        inner.innerHTML = `<img src="${s.photo}" alt="${s.title}" style="width:100%;height:100%;object-fit:contain;padding:8%;" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;background:#333;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;\\'>${s.title[0]?.toUpperCase()}</div>'">`;
     } else {
         const h = Math.abs(s.title.split('').reduce((a,c)=>a+c.charCodeAt(0),0)) % 360;
         inner.innerHTML = `<div style="width:100%;height:100%;background:linear-gradient(135deg,hsl(${h},55%,28%),hsl(${(h+45)%360},60%,18%));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:rgba(255,255,255,.85);">${s.title[0]?.toUpperCase()}</div>`;
