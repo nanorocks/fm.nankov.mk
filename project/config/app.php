@@ -125,4 +125,6 @@ return [
 
     'radio_station_url' => env('RADIO_CHANNELS_URL'),
 
+    'radio_browser_api_url' => env('RADIO_BROWSER_API_URL', 'https://de1.api.radio-browser.info'),
+
 ];

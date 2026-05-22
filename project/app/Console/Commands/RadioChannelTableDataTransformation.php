@@ -20,12 +20,18 @@ class RadioChannelTableDataTransformation extends Command
         $bar->start();
 
         foreach ($channels as $channel) {
+            if (empty($channel->src)) {
+                $bar->advance();
+
+                continue;
+            }
+
             // src is already an absolute URL since the new scraper
             $photoUrl = str_starts_with($channel->src, 'http')
                 ? $channel->src
-                : $channel->base_url . ltrim($channel->src, '/');
+                : $channel->base_url.ltrim($channel->src, '/');
 
-            $filename = 'photos/' . basename($channel->src);
+            $filename = 'photos/'.basename($channel->src);
 
             if (! Storage::disk('public')->exists($filename)) {
                 $contents = $this->fetchPhoto($photoUrl);
@@ -36,6 +42,7 @@ class RadioChannelTableDataTransformation extends Command
                     $this->newLine();
                     $this->warn("Could not fetch photo: {$photoUrl}");
                     $bar->advance();
+
                     continue;
                 }
             }

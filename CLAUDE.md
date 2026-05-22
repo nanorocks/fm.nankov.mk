@@ -48,6 +48,14 @@ php artisan app:radio-web-scraper                        # Step 1: scrape statio
 php artisan app:radio-channel-table-data-transformation  # Step 2: download photos, scrape audio URLs
 ```
 
+**radio-browser.info importer (alternative source, flag-driven):**
+```bash
+php artisan app:radio-importer                           # top 500 by clickcount (default)
+php artisan app:radio-importer --name=naxi               # all Naxi stations
+php artisan app:radio-importer --countrycode=MK          # all Macedonian stations
+php artisan app:radio-importer --countrycode=RS          # all Serbian stations
+```
+
 **First-time production setup:**
 ```bash
 php artisan make:filament-user   # create admin account
@@ -65,6 +73,8 @@ Station data enters through a two-step web scraping pipeline built on [RoachPHP]
 2. **`RadioChannelTableDataTransformation`** artisan command (`app/Console/Commands/`) — iterates all channels, downloads their photos to `storage/public/photos/`, then invokes `AudioSubtitleSpider` per channel to scrape the individual station page for its `<audio>` source URL. Results are saved via `SaveAudioAndSubtitleRadioStationPipeline`.
 
 Spiders write through their respective `ItemProcessorInterface` pipelines in `app/Pipelines/`.
+
+A second, JSON-based source is available via `app/Services/RadioBrowserImporter.php` and its artisan wrapper `app:radio-importer`. It queries the [radio-browser.info](https://www.radio-browser.info) public catalog and upserts rows with `alt = 'rb:<stationuuid>'` and `base_url = 'https://www.radio-browser.info/'`. The photo downloader in `RadioChannelTableDataTransformation` handles these rows automatically because their `src` (favicon URL) is already absolute.
 
 ### Data model
 
@@ -99,3 +109,5 @@ Filament 4 renamed `Filament\Forms\Form` to `Filament\Schemas\Schema`. Resource 
 ### Key config
 
 `RADIO_STATION_URL` (or `config('app.radio_station_url')`) must be set in `.env` for the scrapers to work — this key is not in `.env.example`.
+
+`RADIO_BROWSER_API_URL` (`config('app.radio_browser_api_url')`) defaults to `https://de1.api.radio-browser.info` and is used by `app:radio-importer`. Override to rotate mirrors (`de2`, `fi1`, `us1`) if reliability suffers.
